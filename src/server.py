@@ -23,8 +23,8 @@ class SocketClient:
         file_bytes = b""
         done = False
         while not done:
-            data = self.recv()
-            if file_bytes[-5:] != b"<END>":
+            data = self.socket.recv(1024)
+            if file_bytes[-5:] == b"<END>":
                 done = True
             else:
                 file_bytes += data
