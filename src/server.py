@@ -16,8 +16,7 @@ class SocketClient:
     def recv(self):
         return self.socket.recv(1024).decode()
 
-    def recv_file(self):
-        name = self.recv()
+    def recv_file(self, name):
         size = self.recv()
         file = open(name, "wb")
 
@@ -31,14 +30,14 @@ class SocketClient:
                 file_bytes += data
 
         file.write(file_bytes)
-        #file.close()
-        return name, file
+        return file
 
     def save(self):
-        data = self.recv()
-        while (data != "stop") :
-            name, file = self.recv_file()
+        name = self.recv()
+        while (name != "stop") :
+            file = self.recv_file(name)
             file.close()
+            name = self.recv()
 
 
     """
