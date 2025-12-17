@@ -15,6 +15,17 @@ def main():
 
     print(client.recv(1024).decode('utf-8'))
 
+    clientConnection(client)
+
+
+def clientConnection(client):
+    user = input("Enter username: ")
+    client.send(user.encode())
+    result = client.recv(1024).decode('utf-8')
+    while result != "true":
+        user = input("Enter username: ")
+        client.send(user.encode())
+        result = client.recv(1024).decode('utf-8')
     while True:
         sendMsg(client)
 
