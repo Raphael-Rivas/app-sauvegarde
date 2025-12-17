@@ -6,8 +6,10 @@ from tkinter import filedialog
 import os
 import pathlib
 
+
 HOST = config("HOST")
 PORT = int(config("PORT"))
+
 
 def main():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -16,18 +18,48 @@ def main():
     print(client.recv(1024).decode('utf-8'))
 
     clientConnection(client)
+    
+    while True:
+        sendMsg(client)
 
 
 def clientConnection(client):
+    connectionMethode = input("Log in / Sign up (log/sign)")
+    while connectionMethode != "log" and connectionMethode != "sign":
+        connectionMethode = input("Log in / Sign up (log/sign)")
+    match connectionMethode:
+        case "log":
+            client.send("log".encode())
+            signInConnection(client)
+        case "sign":
+            client.send("sign".encode())
+            signUpConnection(client)
+
+
+def signUpConnection(client):
     user = input("Enter username: ")
+    passwd = input("Enter password: ")
+    passwdConfirm = input("Comfirm password: ")
+    while passwd != passwdConfirm:
+        passwd = input("Enter password: ")
+        passwdConfirm = input("Comfirm password: ")
     client.send(user.encode())
+    client.send(passwd.encode())
     result = client.recv(1024).decode('utf-8')
     while result != "true":
-        user = input("Enter username: ")
-        client.send(user.encode())
-        result = client.recv(1024).decode('utf-8')
-    while True:
-        sendMsg(client)
+        print("Sign up impossible")
+        clientConnection(client)
+
+
+def signInConnection(client):
+    user = input("Enter username: ")
+    passwd = input("Enter password: ")
+    client.send(user.encode())
+    client.send(passwd.encode())
+    result = client.recv(1024).decode('utf-8')
+    while result != "true":
+        print("Incorrect username or password")
+        clientConnection(client)
 
 
 def sendMsg(client):
@@ -62,6 +94,7 @@ def sendMsg(client):
             client.send("exit".encode())
             client.close()
             exit()
+
 
 def sendFile(client, f):
     file = open(str(f), "rb")
