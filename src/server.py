@@ -1,6 +1,7 @@
 import socket
 import threading
 from decouple import config
+from pathlib import Path
 
 HOST = config("HOST")
 PORT = int(config("PORT"))
@@ -18,18 +19,21 @@ class SocketClient:
 
     def recv_file(self, name):
         size = self.recv()
-        file = open(name, "wb")
+        name = "/home/depinfo/Documents/server" + name
+        output_file = Path(name)
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        with output_file.open('wb') as file:
+            file_bytes = b""
+            done = False
+            while not done:
+                data = self.socket.recv(1024)
+                if file_bytes[-5:] == b"<END>":
+                    done = True
+                else:
+                    file_bytes += data
 
-        file_bytes = b""
-        done = False
-        while not done:
-            data = self.socket.recv(1024)
-            if file_bytes[-5:] == b"<END>":
-                done = True
-            else:
-                file_bytes += data
+            file.write(file_bytes)
 
-        file.write(file_bytes)
         return file
 
     def save(self):
