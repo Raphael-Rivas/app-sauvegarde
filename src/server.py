@@ -10,6 +10,7 @@ class SocketClient:
 
     def __init__(self, socket):
         self.socket = socket
+        self.path = ""
 
     def send(self, message):
         self.socket.send(message.encode())
@@ -19,7 +20,7 @@ class SocketClient:
 
     def recv_file(self, name):
         size = self.recv()
-        name = "/home/depinfo/Documents/server" + name
+        name = self.path + name
         output_file = Path(name)
         output_file.parent.mkdir(parents=True, exist_ok=True)
         with output_file.open('wb') as file:
@@ -43,6 +44,24 @@ class SocketClient:
             file.close()
             name = self.recv()
 
+    def log(self):
+        name = self.recv()
+        password = self.recv()
+        path = "/home/depinfo/Documents/server/" + name
+        if Path(path).is_dir():
+            self.path = path
+            return "true"
+        return "false"
+
+    def sign(self):
+        name = self.recv()
+        password = self.recv()
+        path = "/home/depinfo/Documents/server/" + name
+        if Path(path).is_dir():
+            return "false"
+        else:
+            self.path = path
+            return "true"
 
     """
     def restore(self):
@@ -58,6 +77,15 @@ class SocketClient:
 
 def handle_client(s_client):
     s_client.send("Connexion réussie")
+    res_con = "false"
+    while res_con == "false":
+        data = s_client.recv()
+        if data == "sign":
+            res_con = s_client.sign()
+        elif data == "log":
+            res_con = s_client.log()
+        s_client.send(res_con)
+
     data = s_client.recv()
     while data != "exit":
         print("Message reçu : " + data)

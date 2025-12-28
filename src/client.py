@@ -5,6 +5,7 @@ from decouple import config
 from tkinter import filedialog
 import os
 import pathlib
+import time
 
 
 HOST = config("HOST")
@@ -44,9 +45,10 @@ def signUpConnection(client):
         passwd = input("Enter password: ")
         passwdConfirm = input("Comfirm password: ")
     client.send(user.encode())
+    time.sleep(0.01)
     client.send(passwd.encode())
     result = client.recv(1024).decode('utf-8')
-    while result != "true":
+    if result != "true":
         print("Sign up impossible")
         clientConnection(client)
 
@@ -55,9 +57,10 @@ def signInConnection(client):
     user = input("Enter username: ")
     passwd = input("Enter password: ")
     client.send(user.encode())
+    time.sleep(0.01)
     client.send(passwd.encode())
     result = client.recv(1024).decode('utf-8')
-    while result != "true":
+    if result != "true":
         print("Incorrect username or password")
         clientConnection(client)
 
