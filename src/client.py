@@ -68,32 +68,43 @@ def sendMsg(client):
         option = input("Choose between (save/restore/settings/exit): ")
     match option:
         case "save":
-            client.send("save".encode())
-            
-            saveOption = input("Choose between save (directory/files): ")
-            while saveOption != "directory" and saveOption != "files":
-                saveOption = input("Choose between save (directory/files): ")
-            match saveOption:
-                case "directory":
-                    directory = filedialog.askdirectory()
-                    if directory != "":
-                        files = [f for f in pathlib.Path().iterdir() if f.is_file()] #files = [f for f in pathlib.Path().glob("/sys/*.log")]
-                        for f in files:
-                            sendFile(client, f)
-                case "files":
-                    files = filedialog.askopenfilenames()
-                    for f in files:
-                        sendFile(client, f)
-            client.send("stop".encode())
-                    
+            save(client)
         case "restore":
-            path = input()
+            restore()
         case "settings":
-            suffix = input()
+            setSettings()
         case "exit":
             client.send("exit".encode())
             client.close()
             exit()
+
+
+def save(client):
+    client.send("save".encode())
+            
+    saveOption = input("Choose between save (directory/files): ")
+    while saveOption != "directory" and saveOption != "files":
+        saveOption = input("Choose between save (directory/files): ")
+    match saveOption:
+        case "directory":
+            directory = filedialog.askdirectory()
+            if directory != "":
+                files = [f for f in pathlib.Path().iterdir() if f.is_file()] #files = [f for f in pathlib.Path().glob("/sys/*.log")]
+                for f in files:
+                    sendFile(client, f)
+        case "files":
+            files = filedialog.askopenfilenames()
+            for f in files:
+                sendFile(client, f)
+    client.send("stop".encode())
+
+
+def restore():
+    path = input()
+
+
+def setSettings():
+    suffix = input()
 
 
 def sendFile(client, f):
