@@ -25,7 +25,7 @@ class SocketClient:
         return self.socket.recv(1024).decode()
 
     def recv_file(self, name):
-        size = int(self.recv())
+        size = int(self.socket.recv(10).decode())
         name = self.path + name
         output_file = Path(name)
         output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -44,14 +44,15 @@ class SocketClient:
             file.write(file_bytes[ : size])
 
         file.close()
-        return file_bytes[size + 3 : ].decode()
+        return file_bytes[size + 3 : ].decode(errors='ignore')
 
     def save(self):
         name = self.recv()
         while (name != "stop") :
-            name = self.recv_file(name)
-            print("Name : " + name)
-            if name != "stop" :
+            result = self.recv_file(name)
+            if result != "" :
+                name = result
+            else:
                 name = self.recv()
 
     def log(self):

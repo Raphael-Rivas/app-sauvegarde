@@ -111,7 +111,7 @@ def save(client):
         case "directory":
             directory = filedialog.askdirectory()
             if directory != "":
-                files = [f for f in pathlib.Path().iterdir() if f.is_file()] #files = [f for f in pathlib.Path().glob("/sys/*.log")]
+                files = [f for f in pathlib.Path(directory).iterdir() if f.is_file()] #files = [f for f in pathlib.Path().glob("/sys/*.log")]
                 for f in files:
                     sendFile(client, f)
         case "files":
@@ -133,7 +133,10 @@ def sendFile(client, f):
     file = open(str(f), "rb")
     file_size = os.path.getsize(str(f))
     client.send(str(f).encode())
-    client.send(str(file_size).encode())
+    time.sleep(1)
+    # Taille fixe de 10 octets, complétée par des zéros
+    size_str = str(file_size).zfill(10)
+    client.send(size_str.encode())
     data = file.read()
     client.sendall(data)
     client.send("end".encode())
