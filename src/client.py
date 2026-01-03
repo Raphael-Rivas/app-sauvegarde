@@ -7,6 +7,7 @@ import os
 import pathlib
 import time
 import sys
+import hashlib
 
 
 HOST = config("HOST")
@@ -55,7 +56,6 @@ def clientConnection(client):
         case "sign":
             client.send("sign".encode())
             signUpConnection(client)
-    print("User authenticated")
 
 
 def signUpConnection(client):
@@ -66,24 +66,30 @@ def signUpConnection(client):
         passwd = input("Enter password: ")
         passwdConfirm = input("Comfirm password: ")
     client.send(user.encode())
-    time.sleep(0.01)
-    client.send(passwd.encode())
+    time.sleep(0.1)
+    hash_pwd = hashlib.sha256(passwd.encode()).hexdigest()
+    client.send(hash_pwd.encode())
     result = client.recv(1024).decode('utf-8')
     if result != "true":
         print("Sign up impossible")
         clientConnection(client)
+    else:
+        print("User authenticated")
 
 
 def signInConnection(client):
     user = input("Enter username: ")
     passwd = input("Enter password: ")
     client.send(user.encode())
-    time.sleep(0.01)
-    client.send(passwd.encode())
+    time.sleep(0.1)
+    hash_pwd = hashlib.sha256(passwd.encode()).hexdigest()
+    client.send(hash_pwd.encode())
     result = client.recv(1024).decode('utf-8')
     if result != "true":
         print("Incorrect username or password")
         clientConnection(client)
+    else:
+        print("User authenticated")
 
 
 def sendMsg(client):

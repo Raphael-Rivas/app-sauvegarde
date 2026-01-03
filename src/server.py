@@ -59,9 +59,12 @@ class SocketClient:
         name = self.recv()
         password = self.recv()
         path = SERVER_PATH + name
-        if Path(path).is_dir():
+        if Path(path + "/password.txt").is_file():
             self.path = path
-            return "true"
+            with open(path + "/password.txt", "r") as f:
+                hash_pwd = f.read().strip()
+                if hash_pwd == password:
+                    return "true"
         return "false"
 
     def sign(self):
@@ -72,6 +75,9 @@ class SocketClient:
             return "false"
         else:
             self.path = path
+            Path(path).mkdir(parents=True, exist_ok=True)
+            with open(path + "/password.txt", "w") as f:
+                f.write(password)
             return "true"
 
     """
