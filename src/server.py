@@ -25,7 +25,7 @@ class SocketClient:
         return self.socket.recv(1024).decode()
 
     def recv_file(self, name):
-        size = self.recv()
+        size = int(self.recv())
         name = self.path + name
         output_file = Path(name)
         output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -34,26 +34,30 @@ class SocketClient:
             done = False
             while not done:
                 data = self.socket.recv(1024)
-                if file_bytes[-5:] == b"<END>":
+                if not data:
+                    break
+                file_bytes += data
+
+                if len(file_bytes) >= size + 3 and file_bytes[size:size + 3] == b"end":
                     done = True
-                else:
-                    file_bytes += data
 
-            file.write(file_bytes)
+            file.write(file_bytes[ : size])
 
-        return file
+        file.close()
+        return file_bytes[size + 3 : ].decode()
 
     def save(self):
         name = self.recv()
         while (name != "stop") :
-            file = self.recv_file(name)
-            file.close()
-            name = self.recv()
+            name = self.recv_file(name)
+            print("Name : " + name)
+            if name != "stop" :
+                name = self.recv()
 
     def log(self):
         name = self.recv()
         password = self.recv()
-        path = SERVER_PATH  + name
+        path = SERVER_PATH + name
         if Path(path).is_dir():
             self.path = path
             return "true"
@@ -62,7 +66,7 @@ class SocketClient:
     def sign(self):
         name = self.recv()
         password = self.recv()
-        path = SERVER_PATH  + name
+        path = SERVER_PATH + name
         if Path(path).is_dir():
             return "false"
         else:
