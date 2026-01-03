@@ -6,6 +6,7 @@ from tkinter import filedialog
 import os
 import pathlib
 import time
+import sys
 
 
 HOST = config("HOST")
@@ -13,21 +14,40 @@ PORT = int(config("PORT"))
 
 
 def main():
-    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client.connect((HOST, PORT))
+    try:
+        client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        client.connect((HOST, PORT))
+    except ConnectionRefusedError:
+        print("Impossible de se connecter au serveur")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Erreur de connexion: {e}")
+        sys.exit(1)
 
-    print(client.recv(1024).decode('utf-8'))
-
-    clientConnection(client)
-    
-    while True:
-        sendMsg(client)
+    try:
+        print(client.recv(1024).decode('utf-8'))
+        clientConnection(client)
+        
+        while True:
+            sendMsg(client)
+    except (ConnectionResetError, BrokenPipeError):
+        print("Connexion perdue avec le serveur")
+    except KeyboardInterrupt:
+        print("Déconnexion...")
+    finally:
+        try:
+            client.send("exit".encode())
+        except:
+            pass
+        client.close()
+        print("Client fermé")
+        sys.exit(0)
 
 
 def clientConnection(client):
-    connectionMethode = input("Log in / Sign up (log/sign)")
+    connectionMethode = input("Log in / Sign up (log/sign): ")
     while connectionMethode != "log" and connectionMethode != "sign":
-        connectionMethode = input("Log in / Sign up (log/sign)")
+        connectionMethode = input("Log in / Sign up (log/sign): ")
     match connectionMethode:
         case "log":
             client.send("log".encode())
@@ -35,6 +55,7 @@ def clientConnection(client):
         case "sign":
             client.send("sign".encode())
             signUpConnection(client)
+    print("User authenticated")
 
 
 def signUpConnection(client):
@@ -77,9 +98,7 @@ def sendMsg(client):
         case "settings":
             setSettings()
         case "exit":
-            client.send("exit".encode())
-            client.close()
-            exit()
+            raise KeyboardInterrupt  # Will be caught in main() for clean exit
 
 
 def save(client):
