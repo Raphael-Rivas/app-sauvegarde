@@ -5,6 +5,7 @@ from pathlib import Path
 
 HOST = config("HOST")
 PORT = int(config("PORT"))
+SERVER_PATH = config("SERVER_PATH")
 
 class SocketClient:
 
@@ -47,7 +48,7 @@ class SocketClient:
     def log(self):
         name = self.recv()
         password = self.recv()
-        path = "/home/depinfo/Documents/server/" + name
+        path = SERVER_PATH  + name
         if Path(path).is_dir():
             self.path = path
             return "true"
@@ -56,7 +57,7 @@ class SocketClient:
     def sign(self):
         name = self.recv()
         password = self.recv()
-        path = "/home/depinfo/Documents/server/" + name
+        path = SERVER_PATH  + name
         if Path(path).is_dir():
             return "false"
         else:
@@ -100,6 +101,7 @@ def handle_client(s_client):
     s_client.close()
 
 socket_ecoute = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+socket_ecoute.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 socket_ecoute.bind(('', PORT))
 socket_ecoute.listen()
 
@@ -107,15 +109,14 @@ threads = []
 
 print("Début de l'écoute")
 
-while True:
-    try:
+try:
+    while True:
         socket_client, adresse_client = socket_ecoute.accept()
         print("Connexion réussie")
         client_thread = threading.Thread(target=handle_client, args=(SocketClient(socket_client),))
         client_thread.start()
-
         threads.append(client_thread)
-    finally:
-        socket_ecoute.close()
-        for t in threads:
-            t.join()
+finally:
+    socket_ecoute.close()
+    for t in threads:
+        t.join()
