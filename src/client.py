@@ -100,11 +100,11 @@ def sendMsg(client):
         case "save":
             save(client)
         case "restore":
-            restore()
+            restore(client)
         case "settings":
-            setSettings()
+            setSettings(client)
         case "exit":
-            raise KeyboardInterrupt  # Will be caught in main() for clean exit
+            raise KeyboardInterrupt
 
 
 def save(client):
@@ -117,7 +117,7 @@ def save(client):
         case "directory":
             directory = filedialog.askdirectory()
             if directory != "":
-                files = [f for f in pathlib.Path(directory).iterdir() if f.is_file()] #files = [f for f in pathlib.Path().glob("/sys/*.log")]
+                files = [f for f in pathlib.Path(directory).iterdir() if f.is_file()]
                 for f in files:
                     sendFile(client, f)
         case "files":
@@ -127,11 +127,31 @@ def save(client):
     client.send("stop".encode())
 
 
-def restore():
-    path = input()
+def restore(client):
+    client.send("restore".encode())
+    tree = client.recv(1024).decode('utf-8')
+    print("Available files/directories:\n" + tree) #TODO: pretty print for the tree
+    restoreOption = input("Choose between restore (all/file/directory): ")
+    while restoreOption != "all" and restoreOption != "file" and restoreOption != "directory":
+        restoreOption = input("Choose between restore (all/file/directory): ")
+    match restoreOption:
+        case "all":
+            client.send("all".encode())
+            #TODO: recevoir les fichiers et choisir l'emplacement de sauvegarde
+        case "file": #TODO: add restoring a file or files with a stop combine with the one at the end
+            client.send("file".encode())
+            filename = input("Enter the filename to restore: ")
+            client.send(filename.encode())
+            #TODO: recevoir les fichiers et choisir l'emplacement de sauvegarde
+        case "directory":
+            client.send("directory".encode())
+            directory = input("Enter the directory to restore: ")
+            client.send(directory.encode())
+            #TODO: recevoir les fichiers et choisir l'emplacement de sauvegarde
+    client.send("stop".encode())
 
 
-def setSettings():
+def setSettings(client):
     suffix = input()
 
 

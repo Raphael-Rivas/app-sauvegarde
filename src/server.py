@@ -131,7 +131,7 @@ def handle_client(s_client):
 
 def signal_handler(sig, frame):
     global running
-    print("Arrêt du serveur...")
+    print("\nArrêt du serveur...")
     running = False
     socket_ecoute.close()
     sys.exit(0)
