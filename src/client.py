@@ -29,9 +29,8 @@ def main():
     try:
         print(client.recv(1024).decode())
         clientConnection(client)
-        
         while True:
-            sendMsg(client)
+            handleOptions(client)
     except (ConnectionResetError, BrokenPipeError):
         print("Connexion perdue avec le serveur")
     except KeyboardInterrupt:
@@ -93,7 +92,7 @@ def signInConnection(client):
         print("User authenticated")
 
 
-def sendMsg(client):
+def handleOptions(client):
     option = input("Choose between (save/restore/settings/exit): ")
     while option != "save" and option != "restore" and option != "settings" and option != "exit":
         option = input("Choose between (save/restore/settings/exit): ")
@@ -110,7 +109,6 @@ def sendMsg(client):
 
 def save(client):
     client.send("save".encode())
-            
     saveOption = input("Choose between save (directory/files): ")
     while saveOption != "directory" and saveOption != "files":
         saveOption = input("Choose between save (directory/files): ")
@@ -126,6 +124,19 @@ def save(client):
             for f in files:
                 sendFile(client, f)
     client.send("stop".encode())
+    
+
+def sendFile(client, f):
+    file = open(str(f), "rb")
+    file_size = os.path.getsize(str(f))
+    client.send(str(f).encode())
+    time.sleep(1)
+    size_str = str(file_size).zfill(10) # Taille fixe de 10 octets, complétée par des zéros
+    client.send(size_str.encode())
+    data = file.read()
+    client.sendall(data)
+    client.send("end".encode())
+    file.close()
 
 
 def restore(client):
@@ -136,6 +147,7 @@ def restore(client):
     while restoreOption != "all" and restoreOption != "file" and restoreOption != "directory":
         restoreOption = input("Choose between restore (all/file/directory): ")
     match restoreOption:
+        
         case "all": #TODO: handle path server-side ?
             client.send("all".encode())
             path = filedialog.askdirectory(title="Select Directory where to Restore the files")
@@ -166,6 +178,7 @@ def restore(client):
             while path == "":
                 path = filedialog.askdirectory(title="Select Directory where to Restore the files")
             restore_file(client, path)
+            
     client.send("stop".encode())
     
     
@@ -205,20 +218,6 @@ def recv_file(client, path, name):
 def setSettings(client):
     suffix = input()
     #TODO: implement settings
-
-
-def sendFile(client, f):
-    file = open(str(f), "rb")
-    file_size = os.path.getsize(str(f))
-    client.send(str(f).encode())
-    time.sleep(1)
-    # Taille fixe de 10 octets, complétée par des zéros
-    size_str = str(file_size).zfill(10)
-    client.send(size_str.encode())
-    data = file.read()
-    client.sendall(data)
-    client.send("end".encode())
-    file.close()
 
 
 if __name__ == "__main__":
