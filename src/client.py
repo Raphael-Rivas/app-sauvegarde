@@ -102,12 +102,13 @@ def handleOptions(client):
         case "restore":
             restore(client)
         case "settings":
-            setSettings(client)
+            # Bonus : setSettings(client)
+            print("Settings option not implemented yet")
         case "exit":
             raise KeyboardInterrupt
 
 
-def save(client):
+def save(client): #TODO: implement directory  in directory backup
     client.send("save".encode())
     saveOption = input("Choose between save (directory/files): ")
     while saveOption != "directory" and saveOption != "files":
@@ -148,7 +149,7 @@ def restore(client):
         restoreOption = input("Choose between restore (all/file/directory): ")
     match restoreOption:
         
-        case "all": #TODO: handle path server-side ?
+        case "all":
             client.send("all".encode())
             path = filedialog.askdirectory(title="Select Directory where to Restore the files")
             while path == "":
@@ -167,7 +168,7 @@ def restore(client):
                 path = filedialog.askdirectory(title="Select Directory where to Restore the files")
             for filename in filenames:
                 client.send(filename.encode())
-                client.send("stop".encode())
+            client.send("stop".encode())
             restore_file(client, path)
             
         case "directory":
@@ -213,11 +214,6 @@ def recv_file(client, path, name):
 
         file.close()
         return file_bytes[size + 3 : ].decode(errors='ignore')
-
-
-def setSettings(client):
-    suffix = input()
-    #TODO: implement settings
 
 
 if __name__ == "__main__":
