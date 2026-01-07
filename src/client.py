@@ -8,6 +8,7 @@ import pathlib
 import time
 import sys
 import hashlib
+from pathlib import Path
 
 
 HOST = config("HOST")
@@ -26,7 +27,7 @@ def main():
         sys.exit(1)
 
     try:
-        print(client.recv(1024).decode('utf-8'))
+        print(client.recv(1024).decode())
         clientConnection(client)
         
         while True:
@@ -69,7 +70,7 @@ def signUpConnection(client):
     time.sleep(0.1)
     hash_pwd = hashlib.sha256(passwd.encode()).hexdigest()
     client.send(hash_pwd.encode())
-    result = client.recv(1024).decode('utf-8')
+    result = client.recv(1024).decode()
     if result != "true":
         print("Sign up impossible")
         clientConnection(client)
@@ -84,7 +85,7 @@ def signInConnection(client):
     time.sleep(0.1)
     hash_pwd = hashlib.sha256(passwd.encode()).hexdigest()
     client.send(hash_pwd.encode())
-    result = client.recv(1024).decode('utf-8')
+    result = client.recv(1024).decode()
     if result != "true":
         print("Incorrect username or password")
         clientConnection(client)
@@ -115,13 +116,13 @@ def save(client):
         saveOption = input("Choose between save (directory/files): ")
     match saveOption:
         case "directory":
-            directory = filedialog.askdirectory()
+            directory = filedialog.askdirectory(title="Select Directory to Save")
             if directory != "":
                 files = [f for f in pathlib.Path(directory).iterdir() if f.is_file()]
                 for f in files:
                     sendFile(client, f)
         case "files":
-            files = filedialog.askopenfilenames()
+            files = filedialog.askopenfilenames(title="Select Files to Save")
             for f in files:
                 sendFile(client, f)
     client.send("stop".encode())
@@ -129,30 +130,81 @@ def save(client):
 
 def restore(client):
     client.send("restore".encode())
-    tree = client.recv(1024).decode('utf-8')
-    print("Available files/directories:\n" + tree) #TODO: pretty print for the tree
+    tree = client.recv(1024).decode()
+    print("Available files/directories:\n" + tree) #TODO: pretty print for the tree ?
     restoreOption = input("Choose between restore (all/file/directory): ")
     while restoreOption != "all" and restoreOption != "file" and restoreOption != "directory":
         restoreOption = input("Choose between restore (all/file/directory): ")
     match restoreOption:
-        case "all":
+        case "all": #TODO: handle path server-side ?
             client.send("all".encode())
-            #TODO: recevoir les fichiers et choisir l'emplacement de sauvegarde
-        case "file": #TODO: add restoring a file or files with a stop combine with the one at the end
+            path = filedialog.askdirectory(title="Select Directory where to Restore the files")
+            while path == "":
+                path = filedialog.askdirectory(title="Select Directory where to Restore the files")
+            restore_file(client, path)
+
+        case "file":
             client.send("file".encode())
-            filename = input("Enter the filename to restore: ")
-            client.send(filename.encode())
-            #TODO: recevoir les fichiers et choisir l'emplacement de sauvegarde
+            filenames = []
+            name = input("Enter the filename to restore (stop to finish): ") #TODO: handle non-existing file in the server tree
+            while name != "stop":
+                filenames.append(name)
+                name = input("Enter the filename to restore (stop to finish): ")
+            path = filedialog.askdirectory(title="Select Directory where to Restore the files")
+            while path == "":
+                path = filedialog.askdirectory(title="Select Directory where to Restore the files")
+            for filename in filenames:
+                client.send(filename.encode())
+                client.send("stop".encode())
+            restore_file(client, path)
+            
         case "directory":
             client.send("directory".encode())
-            directory = input("Enter the directory to restore: ")
+            directory = input("Enter the directory to restore: ") #TODO: handle non-existing directory in the server tree
             client.send(directory.encode())
-            #TODO: recevoir les fichiers et choisir l'emplacement de sauvegarde
+            path = filedialog.askdirectory(title="Select Directory where to Restore the files")
+            while path == "":
+                path = filedialog.askdirectory(title="Select Directory where to Restore the files")
+            restore_file(client, path)
     client.send("stop".encode())
+    
+    
+def restore_file(client, path):
+    name = client.recv(1024).decode()
+    while (name != "stop") :
+        result = recv_file(client, path, name)
+        if result != "" :
+            name = result
+        else:
+            name = client.recv(1024).decode()
+    
+    
+def recv_file(client, path, name):
+        size = int(client.recv(10).decode())
+        name = path + "/" + name
+        output_file = Path(name)
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        with output_file.open('wb') as file:
+            file_bytes = b""
+            done = False
+            while not done:
+                data = client.recv(1024)
+                if not data:
+                    break
+                file_bytes += data
+
+                if len(file_bytes) >= size + 3 and file_bytes[size:size + 3] == b"end":
+                    done = True
+
+            file.write(file_bytes[ : size])
+
+        file.close()
+        return file_bytes[size + 3 : ].decode(errors='ignore')
 
 
 def setSettings(client):
     suffix = input()
+    #TODO: implement settings
 
 
 def sendFile(client, f):
