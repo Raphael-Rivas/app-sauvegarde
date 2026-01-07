@@ -108,7 +108,7 @@ def handleOptions(client):
             raise KeyboardInterrupt
 
 
-def save(client): #TODO: implement directory  in directory backup
+def save(client): #TODO: implement directory in directory backup
     client.send("save".encode())
     saveOption = input("Choose between save (directory/files): ")
     while saveOption != "directory" and saveOption != "files":
@@ -117,9 +117,9 @@ def save(client): #TODO: implement directory  in directory backup
         case "directory":
             directory = filedialog.askdirectory(title="Select Directory to Save")
             if directory != "":
-                files = [f for f in pathlib.Path(directory).iterdir() if f.is_file()]
-                for f in files:
-                    sendFile(client, f)
+                for f in pathlib.Path(directory).rglob("*"):
+                    if f.is_file():
+                        sendFile(client, f)
         case "files":
             files = filedialog.askopenfilenames(title="Select Files to Save")
             for f in files:
