@@ -11,14 +11,22 @@ import os
 # Get a directory tree structure
 def list_files(startpath):
     result = ""
+    startpath = os.path.normpath(startpath)
     for root, dirs, files in os.walk(startpath):
-        level = root.replace(startpath, '').count(os.sep)
+        rel = os.path.relpath(root, startpath)
+        if rel == ".":
+            subindent = ' ' * 4 * 0
+            for f in files:
+                if f != "password.txt":
+                    result += f"{subindent}{f}\n"
+            continue
+        level = rel.count(os.sep)
         indent = ' ' * 4 * level
-        result += '{}{}/\n'.format(indent, os.path.basename(root))
+        result += f"{indent}{os.path.basename(root)}/\n"
         subindent = ' ' * 4 * (level + 1)
         for f in files:
             if f != "password.txt":
-                result += '{}{}\n'.format(subindent, f)
+                result += f"{subindent}{f}\n"
     return result
 
 HOST = config("HOST")
