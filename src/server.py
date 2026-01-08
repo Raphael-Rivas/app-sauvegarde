@@ -4,6 +4,19 @@ import signal
 import sys
 from decouple import config
 from pathlib import Path
+import os
+
+# Get a directory tree structure
+def list_files(startpath):
+    result = ""
+    for root, dirs, files in os.walk(startpath):
+        level = root.replace(startpath, '').count(os.sep)
+        indent = ' ' * 4 * level
+        result += '{}{}/\n'.format(indent, os.path.basename(root))
+        subindent = ' ' * 4 * (level + 1)
+        for f in files:
+            result += '{}{}\n'.format(subindent, f)
+    return result
 
 HOST = config("HOST")
 PORT = int(config("PORT"))
@@ -80,13 +93,12 @@ class SocketClient:
                 f.write(password)
             return "true"
 
-    """
     def restore(self):
-
-
-    def settings(self):
-
-    """
+        tree = list_files(self.path)
+        tree_bytes = tree.encode()
+        size_str = str(len(tree_bytes)).zfill(10)
+        self.socket.send(size_str.encode())
+        self.socket.sendall(tree_bytes)
 
     def close(self):
         try:

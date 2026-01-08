@@ -142,7 +142,11 @@ def sendFile(client, f):
 
 def restore(client):
     client.send("restore".encode())
-    tree = client.recv(1024).decode()
+    size = int(client.recv(10).decode())
+    tree_bytes = b""
+    while len(tree_bytes) < size:
+        tree_bytes += client.recv(min(4096, size - len(tree_bytes)))
+    tree = tree_bytes.decode()
     print("Available files/directories:\n" + tree) #TODO: pretty print for the tree ?
     restoreOption = input("Choose between restore (all/file/directory): ")
     while restoreOption != "all" and restoreOption != "file" and restoreOption != "directory":
