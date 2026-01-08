@@ -156,15 +156,20 @@ def restore(client):
         case "all":
             client.send("all".encode())
             path = filedialog.askdirectory(title="Select Directory where to Restore the files")
-            while path == "":
-                path = filedialog.askdirectory(title="Select Directory where to Restore the files")
+            if path == "":
+                print("Restoration cancelled")
+                client.send("cancel".encode())
+                return
+            client.send("proceed".encode())
             restore_file(client, path)
 
         case "file":
             client.send("file".encode())
             path = filedialog.askdirectory(title="Select Directory where to Restore the files")
-            while path == "":
-                path = filedialog.askdirectory(title="Select Directory where to Restore the files")
+            if path == "":
+                print("Restoration cancelled")
+                client.send("cancel".encode())
+                return
             name = input("Enter the filename to restore (stop to finish): ")
             while name != "stop":
                 client.send(name.encode())
@@ -180,11 +185,13 @@ def restore(client):
 
         case "directory":
             client.send("directory".encode())
-            directory = input("Enter the directory to restore: ") #TODO: handle non-existing directory in the server tree
-            client.send(directory.encode())
             path = filedialog.askdirectory(title="Select Directory where to Restore the files")
-            while path == "":
-                path = filedialog.askdirectory(title="Select Directory where to Restore the files")
+            if path == "":
+                print("Restoration cancelled")
+                client.send("cancel".encode())
+                return
+            directory = input("Enter the directory to restore: ")
+            client.send(directory.encode())
             restore_file(client, path)
 
     

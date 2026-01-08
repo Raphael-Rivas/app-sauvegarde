@@ -120,6 +120,9 @@ class SocketClient:
         data = self.recv()
         match data:
             case "all":
+                confirmation = self.recv()
+                if confirmation == "cancel":
+                    return
                 for f in pathlib.Path(self.path).rglob("*"):
                     if f.is_file() and f.name != "password.txt":
                         relative_path = str(f).replace(self.path, "")
@@ -129,24 +132,33 @@ class SocketClient:
                 self.send("stop")
             case "file":
                 filename = self.recv()
-                while filename != "stop":
+                if filename == "cancel":
+                    return
+                while filename != "stop" and filename != "" and filename != "cancel":
                     found = False
+                    # normaliser le chemin demandé (POSIX, sans leading slash)
+                    req_norm = filename.replace("\\", "/").lstrip("/")
                     for f in pathlib.Path(self.path).rglob("*"):
-                        if f.is_file() and f.name == filename:
-                            self.sendFile(f, f.name)
-                            found = True
-                            break
+                        if f.is_file() and f.name != "password.txt":
+                            # chemin relatif POSIX par rapport à self.path
+                            rel_norm = f.relative_to(self.path).as_posix()
+                            if rel_norm == req_norm:
+                                # renvoyer le fichier avec juste son nom
+                                self.sendFile(f, f.name)
+                                found = True
+                                break
                     if not found:
                         self.send("notfound")
                     filename = self.recv()
             case "directory":
                 directory = self.recv()
-                dir_path = pathlib.Path(self.path) / directory
-                if dir_path.is_dir():
-                    for f in dir_path.rglob("*"):
-                        if f.is_file() and f.name != "password.txt":
-                            relative_path = str(f).replace(str(dir_path) + "/", "")
-                            self.sendFile(f, relative_path)
+                if directory and directory != "cancel":
+                    dir_path = pathlib.Path(self.path) / directory
+                    if dir_path.is_dir():
+                        for f in dir_path.rglob("*"):
+                            if f.is_file() and f.name != "password.txt":
+                                relative_path = str(f).replace(str(dir_path) + "/", "")
+                                self.sendFile(f, relative_path)
                 self.send("stop")
 
 
