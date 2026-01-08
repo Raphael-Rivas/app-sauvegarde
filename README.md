@@ -1,36 +1,76 @@
-Deux applications, client et serveur.
+# Application de sauvegarde client-serveur (Python, sockets)
 
-Le client se connecte au serveur avec l'adresse IP du serveur par des sockets.
+Application client-serveur permettant de sauvegarder et restaurer des fichiers via une connexion réseau TCP.
 
-Quand le client arrive, il a le choix entre créer un compte et se connecter.
+## Fonctionnalités implémentées
 
-Quand il se crée un compte, il crée un ID (unique) et un mot de passe.
+### Authentification
+- **Inscription (Sign up)** : Création d'un compte avec identifiant et mot de passe (hashé en SHA-256)
+- **Connexion (Log in)** : Authentification avec identifiant et mot de passe
+- Le serveur crée un dossier dédié par utilisateur pour stocker ses fichiers
 
-Si c'est la première fois qu'il se connecte, le serveur crée en local un dossier au nom de l'ID du client avec un fichier de paramètre à l'intérieur.
+### Sauvegarde
+- **Sauvegarde de fichiers** : Sélection de fichiers individuels via une boîte de dialogue
+- **Sauvegarde de dossier** : Sélection d'un dossier complet (récursif, tous les fichiers sont sauvegardés)
+- L'arborescence d'origine est recréée côté serveur
 
-Le client a alors trois options : 
- - paramètres, 
- - sauvegarder, 
- - restaurer.
- 
-Paramètres 
+### Restauration
+- **Restauration complète (all)** : Restaure tous les fichiers de l'utilisateur
+- **Restauration de fichier (file)** : Restaure un ou plusieurs fichiers par leur nom
+- **Restauration de dossier (directory)** : Restaure un dossier spécifique et son contenu
+- Affichage de l'arborescence des fichiers disponibles avant restauration
 
--> le fichier où les types de fichiers (suffixes) à sauvegarder son marqués
+## Utilisation
 
--> le client envoie '+' ou '-' associé à un suffixe pour le rajouter ou l'enlever de la liste 
+### Configuration
+Créer un fichier `.env` avec :
+```
+HOST=<adresse_ip_serveur>
+PORT=<port>
+SERVER_PATH=<chemin_stockage_serveur>  # côté serveur uniquement
+```
 
-Sauvegarder 
+### Commandes client
+1. Lancer le client : `python client.py`
+2. Choisir `log` (connexion) ou `sign` (inscription)
+3. Choisir une action : `save`, `restore`, `settings`, `exit`
 
--> le client passe en paramètre de l'appel le dossier à sauvegarder 
+## Écarts par rapport aux attentes
 
--> le serveur sauvegarde les fichiers s'ils n'ont jamais été sauvegardés, sinon vérifie s'ils ont été modifiés (avec la date de modif) avant de les enregistrer
+### Non implémenté
 
--> recrée l'architecture d'origine
+| Fonctionnalité | Attendu | État actuel |
+|----------------|---------|-------------|
+| **Filtrage par suffixes** | Sauvegarde uniquement les fichiers dont les suffixes sont dans un fichier de paramètres | **Non implémenté** - Tous les fichiers sont sauvegardés |
+| **Sauvegarde incrémentale** | Ne copier que les fichiers nouveaux ou modifiés depuis la dernière sauvegarde | **Non implémenté** - Tous les fichiers sont renvoyés à chaque sauvegarde |
+| **Détection première sauvegarde** | Différencier première sauvegarde vs sauvegardes suivantes | **Non implémenté** |
+| **Option Settings** | Interface pour modifier les paramètres (suffixes) | **Non implémenté** |
 
-Restaurer 
+### Options non implémentées (bonus)
 
--> le client passe en paramètre l'endroit où il veut stocker les fichiers ainsi que le fichier/dossier qu'il veut récupérer
+| Fonctionnalité | Description | État |
+|----------------|-------------|------|
+| **Sécurisation des flux (TLS)** | Chiffrement des communications réseau | **Non implémenté** - Connexion TCP en clair |
+| **Chiffrement des données** | Chiffrement des fichiers stockés côté serveur | **Non implémenté** - Fichiers stockés en clair |
 
--> option de récupération sans paramètre qui restaure facilement
+## Architecture technique
 
-En Python pour la facilité d'utilisation des Sockets. 
+### Client (`client.py`)
+- Connexion socket TCP au serveur
+- Interface en ligne de commande + boîtes de dialogue (tkinter) pour sélection des fichiers/dossiers
+- Envoi des fichiers avec taille préfixée (10 octets) + marqueur de fin "end"
+
+### Serveur (`server.py`)
+- Serveur multi-threadé (un thread par client)
+- Stockage des fichiers dans `SERVER_PATH/<username>/`
+- Mot de passe hashé stocké dans `password.txt` par utilisateur
+
+## TODO pour conformité complète
+
+1. [ ] Implémenter le fichier de paramètres (liste de suffixes autorisés)
+2. [ ] Ajouter le filtrage des fichiers par suffixe côté client
+3. [ ] Implémenter la détection de sauvegarde existante (comparaison par date de modification)
+4. [ ] Implémenter la sauvegarde incrémentale
+5. [ ] Ajouter l'interface "Settings" pour gérer les suffixes
+6. [ ] (Option) Sécuriser les connexions avec TLS
+7. [ ] (Option) Chiffrer les fichiers stockés côté serveur

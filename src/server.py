@@ -200,7 +200,7 @@ def handle_client(s_client):
                 case "restore":
                     s_client.restore()
                 case "settings":
-                    s_client.settings()
+                    print("Settings requested - not implemented")
             data = s_client.recv()
     except (ConnectionResetError, BrokenPipeError, OSError):
         print("Client déconnecté brusquement")
