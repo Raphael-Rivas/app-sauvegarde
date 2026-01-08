@@ -1,5 +1,7 @@
 # Application de sauvegarde client-serveur (Python, sockets)
 
+**Contributeurs :** Raphaël RIVAS, Maël NICOLAS
+
 **Dépôt Git :** https://gitlabinfo.iutmontp.univ-montp2.fr/continuite-services-s5/app-sauvegarde
 
 Application client-serveur permettant de sauvegarder et restaurer des fichiers via une connexion réseau TCP.
