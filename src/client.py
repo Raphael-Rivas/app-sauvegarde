@@ -102,13 +102,13 @@ def handleOptions(client):
         case "restore":
             restore(client)
         case "settings":
-            # Bonus : setSettings(client)
+            # Not implemented : setSettings(client)
             print("Settings option not implemented yet")
         case "exit":
             raise KeyboardInterrupt
 
 
-def save(client): #TODO: implement directory in directory backup
+def save(client):
     client.send("save".encode())
     saveOption = input("Choose between save (directory/files): ")
     while saveOption != "directory" and saveOption != "files":
@@ -132,7 +132,7 @@ def sendFile(client, f):
     file_size = os.path.getsize(str(f))
     client.send(str(f).encode())
     time.sleep(1)
-    size_str = str(file_size).zfill(10) # Taille fixe de 10 octets, complétée par des zéros
+    size_str = str(file_size).zfill(10)
     client.send(size_str.encode())
     data = file.read()
     client.sendall(data)
@@ -200,9 +200,9 @@ def restore_file(client, path):
         client.settimeout(10.0)
         name = client.recv(1024).decode()
         while name != "stop":
-            client.send("ACK".encode())  # Confirmer réception du nom
+            client.send("ACK".encode())
             recv_file(client, path, name)
-            client.send("ACK".encode())  # Confirmer réception du fichier complet
+            client.send("ACK".encode())
             name = client.recv(1024).decode()
     except socket.timeout:
         print("Timeout: le serveur ne répond plus")
@@ -228,7 +228,6 @@ def recv_file(client, path, name):
             if len(file_bytes) >= size + 3 and file_bytes[size:size + 3] == b"end":
                 done = True
         file.write(file_bytes[:size])
-
 
 
 if __name__ == "__main__":

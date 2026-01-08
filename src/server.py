@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import pathlib
 import socket
 import threading
@@ -8,32 +10,13 @@ from decouple import config
 from pathlib import Path
 import os
 
-# Get a directory tree structure
-def list_files(startpath):
-    result = ""
-    startpath = os.path.normpath(startpath)
-    for root, dirs, files in os.walk(startpath):
-        rel = os.path.relpath(root, startpath)
-        if rel == ".":
-            subindent = ' ' * 4 * 0
-            for f in files:
-                if f != "password.txt":
-                    result += f"{subindent}{f}\n"
-            continue
-        level = rel.count(os.sep)
-        indent = ' ' * 4 * level
-        result += f"{indent}{os.path.basename(root)}/\n"
-        subindent = ' ' * 4 * (level + 1)
-        for f in files:
-            if f != "password.txt":
-                result += f"{subindent}{f}\n"
-    return result
 
 HOST = config("HOST")
 PORT = int(config("PORT"))
 SERVER_PATH = config("SERVER_PATH")
 
 running = True
+socket_ecoute = None
 
 
 class SocketClient:
@@ -76,14 +59,14 @@ class SocketClient:
         if name is None:
             name = str(f)
         self.send(name)
-        self.recv()  # ACK, nom reçu
-        size_str = str(file_size).zfill(10)  # Taille fixe de 10 octets, complétée par des zéros
+        self.recv()
+        size_str = str(file_size).zfill(10)
         self.send(size_str)
         data = file.read()
         self.socket.sendall(data)
         self.send("end")
         file.close()
-        self.recv()  # ACK, fichier complet reçu
+        self.recv()
 
     def save(self):
         name = self.recv()
@@ -144,14 +127,11 @@ class SocketClient:
                     return
                 while filename != "stop" and filename != "" and filename != "cancel":
                     found = False
-                    # normaliser le chemin demandé (POSIX, sans leading slash)
                     req_norm = filename.replace("\\", "/").lstrip("/")
                     for f in pathlib.Path(self.path).rglob("*"):
                         if f.is_file() and f.name != "password.txt":
-                            # chemin relatif POSIX par rapport à self.path
                             rel_norm = f.relative_to(self.path).as_posix()
                             if rel_norm == req_norm:
-                                # renvoyer le fichier avec juste son nom
                                 self.sendFile(f, f.name)
                                 found = True
                                 break
@@ -175,6 +155,52 @@ class SocketClient:
             self.socket.close()
         except:
             pass
+
+
+def main():
+    global socket_ecoute
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
+    socket_ecoute = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    socket_ecoute.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    socket_ecoute.bind(('', PORT))
+    socket_ecoute.listen()
+    socket_ecoute.settimeout(1.0)
+
+    threads = []
+
+    print("Début de l'écoute")
+
+    try:
+        while running:
+            try:
+                socket_client, adresse_client = socket_ecoute.accept()
+                print("Connexion réussie")
+                client_thread = threading.Thread(target=handle_client, args=(SocketClient(socket_client),))
+                client_thread.start()
+                threads.append(client_thread)
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+    finally:
+        socket_ecoute.close()
+        for t in threads:
+            t.join(timeout=2.0)
+        print("Serveur fermé")
+        
+        
+def signal_handler(sig, frame):
+    global running, socket_ecoute
+    print("\nArrêt du serveur...")
+    running = False
+    if socket_ecoute:
+        try:
+            socket_ecoute.close()
+        except:
+            pass
+    sys.exit(0)
 
 
 def handle_client(s_client):
@@ -211,41 +237,26 @@ def handle_client(s_client):
         print("Client fermé")
 
 
-def signal_handler(sig, frame):
-    global running
-    print("\nArrêt du serveur...")
-    running = False
-    socket_ecoute.close()
-    sys.exit(0)
-
-
-signal.signal(signal.SIGINT, signal_handler)
-signal.signal(signal.SIGTERM, signal_handler)
-
-socket_ecoute = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-socket_ecoute.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-socket_ecoute.bind(('', PORT))
-socket_ecoute.listen()
-socket_ecoute.settimeout(1.0)  # Timeout pour permettre l'arrêt propre
-
-threads = []
-
-print("Début de l'écoute")
-
-try:
-    while running:
-        try:
-            socket_client, adresse_client = socket_ecoute.accept()
-            print("Connexion réussie")
-            client_thread = threading.Thread(target=handle_client, args=(SocketClient(socket_client),))
-            client_thread.start()
-            threads.append(client_thread)
-        except socket.timeout:
+def list_files(startpath):
+    result = ""
+    startpath = os.path.normpath(startpath)
+    for root, dirs, files in os.walk(startpath):
+        rel = os.path.relpath(root, startpath)
+        if rel == ".":
+            subindent = ' ' * 4 * 0
+            for f in files:
+                if f != "password.txt":
+                    result += f"{subindent}{f}\n"
             continue
-        except OSError:
-            break
-finally:
-    socket_ecoute.close()
-    for t in threads:
-        t.join(timeout=2.0)
-    print("Serveur fermé")
+        level = rel.count(os.sep)
+        indent = ' ' * 4 * level
+        result += f"{indent}{os.path.basename(root)}/\n"
+        subindent = ' ' * 4 * (level + 1)
+        for f in files:
+            if f != "password.txt":
+                result += f"{subindent}{f}\n"
+    return result
+
+        
+if __name__ == "__main__":
+    main()
