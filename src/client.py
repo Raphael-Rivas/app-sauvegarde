@@ -147,7 +147,7 @@ def restore(client):
     while len(tree_bytes) < size:
         tree_bytes += client.recv(min(4096, size - len(tree_bytes)))
     tree = tree_bytes.decode()
-    print("Available files/directories:\n" + tree) #TODO: pretty print for the tree ?
+    print("Available files/directories:\n" + tree)
     restoreOption = input("Choose between restore (all/file/directory): ")
     while restoreOption != "all" and restoreOption != "file" and restoreOption != "directory":
         restoreOption = input("Choose between restore (all/file/directory): ")
@@ -162,19 +162,22 @@ def restore(client):
 
         case "file":
             client.send("file".encode())
-            filenames = []
-            name = input("Enter the filename to restore (stop to finish): ") #TODO: handle non-existing file in the server tree
-            while name != "stop":
-                filenames.append(name)
-                name = input("Enter the filename to restore (stop to finish): ")
             path = filedialog.askdirectory(title="Select Directory where to Restore the files")
             while path == "":
                 path = filedialog.askdirectory(title="Select Directory where to Restore the files")
-            for filename in filenames:
-                client.send(filename.encode())
+            name = input("Enter the filename to restore (stop to finish): ")
+            while name != "stop":
+                client.send(name.encode())
+                filename = client.recv(1024).decode()
+                if filename == "notfound":
+                    print(f"File '{name}' not found on server")
+                else:
+                    client.send("ACK".encode())
+                    recv_file(client, path, filename)
+                    client.send("ACK".encode())
+                name = input("Enter the filename to restore (stop to finish): ")
             client.send("stop".encode())
-            restore_file(client, path)
-            
+
         case "directory":
             client.send("directory".encode())
             directory = input("Enter the directory to restore: ") #TODO: handle non-existing directory in the server tree
@@ -183,41 +186,42 @@ def restore(client):
             while path == "":
                 path = filedialog.askdirectory(title="Select Directory where to Restore the files")
             restore_file(client, path)
-            
-    client.send("stop".encode())
-    
+
     
 def restore_file(client, path):
-    name = client.recv(1024).decode()
-    while (name != "stop") :
-        result = recv_file(client, path, name)
-        if result != "" :
-            name = result
-        else:
+    try:
+        client.settimeout(10.0)
+        name = client.recv(1024).decode()
+        while name != "stop":
+            client.send("ACK".encode())  # Confirmer réception du nom
+            recv_file(client, path, name)
+            client.send("ACK".encode())  # Confirmer réception du fichier complet
             name = client.recv(1024).decode()
-    
+    except socket.timeout:
+        print("Timeout: le serveur ne répond plus")
+    except Exception as e:
+        print(f"Erreur dans restore_file: {e}")
+    finally:
+        client.settimeout(None)
+
     
 def recv_file(client, path, name):
-        size = int(client.recv(10).decode())
-        name = path + "/" + name
-        output_file = Path(name)
-        output_file.parent.mkdir(parents=True, exist_ok=True)
-        with output_file.open('wb') as file:
-            file_bytes = b""
-            done = False
-            while not done:
-                data = client.recv(1024)
-                if not data:
-                    break
-                file_bytes += data
+    size = int(client.recv(10).decode())
+    full_path = path + "/" + name
+    output_file = Path(full_path)
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    with output_file.open('wb') as file:
+        file_bytes = b""
+        done = False
+        while not done:
+            data = client.recv(1024)
+            if not data:
+                break
+            file_bytes += data
+            if len(file_bytes) >= size + 3 and file_bytes[size:size + 3] == b"end":
+                done = True
+        file.write(file_bytes[:size])
 
-                if len(file_bytes) >= size + 3 and file_bytes[size:size + 3] == b"end":
-                    done = True
-
-            file.write(file_bytes[ : size])
-
-        file.close()
-        return file_bytes[size + 3 : ].decode(errors='ignore')
 
 
 if __name__ == "__main__":

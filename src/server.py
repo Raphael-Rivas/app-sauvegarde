@@ -1,7 +1,9 @@
+import pathlib
 import socket
 import threading
 import signal
 import sys
+
 from decouple import config
 from pathlib import Path
 import os
@@ -15,7 +17,8 @@ def list_files(startpath):
         result += '{}{}/\n'.format(indent, os.path.basename(root))
         subindent = ' ' * 4 * (level + 1)
         for f in files:
-            result += '{}{}\n'.format(subindent, f)
+            if f != "password.txt":
+                result += '{}{}\n'.format(subindent, f)
     return result
 
 HOST = config("HOST")
@@ -59,6 +62,21 @@ class SocketClient:
         file.close()
         return file_bytes[size + 3 : ].decode(errors='ignore')
 
+    def sendFile(self, f, name=None):
+        file = open(str(f), "rb")
+        file_size = os.path.getsize(str(f))
+        if name is None:
+            name = str(f)
+        self.send(name)
+        self.recv()  # ACK, nom reçu
+        size_str = str(file_size).zfill(10)  # Taille fixe de 10 octets, complétée par des zéros
+        self.send(size_str)
+        data = file.read()
+        self.socket.sendall(data)
+        self.send("end")
+        file.close()
+        self.recv()  # ACK, fichier complet reçu
+
     def save(self):
         name = self.recv()
         while (name != "stop") :
@@ -73,10 +91,10 @@ class SocketClient:
         password = self.recv()
         path = SERVER_PATH + name
         if Path(path + "/password.txt").is_file():
-            self.path = path
             with open(path + "/password.txt", "r") as f:
                 hash_pwd = f.read().strip()
                 if hash_pwd == password:
+                    self.path = path
                     return "true"
         return "false"
 
@@ -99,6 +117,38 @@ class SocketClient:
         size_str = str(len(tree_bytes)).zfill(10)
         self.socket.send(size_str.encode())
         self.socket.sendall(tree_bytes)
+        data = self.recv()
+        match data:
+            case "all":
+                for f in pathlib.Path(self.path).rglob("*"):
+                    if f.is_file() and f.name != "password.txt":
+                        relative_path = str(f).replace(self.path, "")
+                        if relative_path.startswith("/"):
+                            relative_path = relative_path[1:]
+                        self.sendFile(f, relative_path)
+                self.send("stop")
+            case "file":
+                filename = self.recv()
+                while filename != "stop":
+                    found = False
+                    for f in pathlib.Path(self.path).rglob("*"):
+                        if f.is_file() and f.name == filename:
+                            self.sendFile(f, f.name)
+                            found = True
+                            break
+                    if not found:
+                        self.send("notfound")
+                    filename = self.recv()
+            case "directory":
+                directory = self.recv()
+                dir_path = pathlib.Path(self.path) / directory
+                if dir_path.is_dir():
+                    for f in dir_path.rglob("*"):
+                        if f.is_file() and f.name != "password.txt":
+                            relative_path = str(f).replace(str(dir_path) + "/", "")
+                            self.sendFile(f, relative_path)
+                self.send("stop")
+
 
     def close(self):
         try:
